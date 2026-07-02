@@ -326,7 +326,7 @@ textarea{resize:vertical;min-height:72px;line-height:1.5;}
   border-radius:var(--r);padding:13px 16px;
   display:flex;align-items:center;gap:13px;
   margin-bottom:10px;transition:all .2s;
-  box-shadow:var(--shadow-sm);
+  box-shadow:var(--shadow-sm);cursor:pointer;
 }
 .expense-item:hover{border-color:var(--blue2);}
 .expense-thumb{
@@ -427,6 +427,38 @@ textarea{resize:vertical;min-height:72px;line-height:1.5;}
 .modal-title{font-family:'Barlow',sans-serif;font-size:18px;font-weight:800;margin-bottom:12px;color:var(--navy);text-transform:uppercase;}
 .modal-body{color:var(--text2);font-size:14px;line-height:1.6;margin-bottom:20px;}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+
+/* ── DETAIL MODAL ── */
+.detail-card{
+  background:var(--white);border-radius:var(--r);
+  width:100%;max-width:480px;max-height:90vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 20px 48px rgba(17,24,39,.28);
+  position:relative;
+}
+.detail-close{
+  position:absolute;top:10px;right:10px;z-index:5;
+  width:32px;height:32px;border-radius:50%;
+  background:rgba(17,24,39,.55);color:#fff;border:none;
+  font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.detail-photo-wrap{
+  background:#0F172A;display:flex;align-items:center;justify-content:center;
+  overflow:auto;max-height:55vh;min-height:160px;flex-shrink:0;
+}
+.detail-photo-wrap img{
+  max-width:100%;max-height:55vh;object-fit:contain;cursor:zoom-in;
+  transition:transform .2s;touch-action:pinch-zoom;display:block;
+}
+.detail-photo-wrap img.zoomed{
+  max-width:none;max-height:none;transform:scale(2.2);cursor:zoom-out;
+}
+.detail-photo-empty{color:#9CA3AF;font-size:13px;padding:44px 20px;text-align:center;}
+.detail-info{padding:18px 20px;overflow-y:auto;}
+.detail-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.detail-row:last-child{border-bottom:none;}
+.detail-label{color:var(--text3);font-weight:600;flex-shrink:0;}
+.detail-value{color:var(--navy);font-weight:600;text-align:right;}
 
 /* ── CROPPER ── */
 .cropper-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;}
@@ -667,6 +699,15 @@ textarea{resize:vertical;min-height:72px;line-height:1.5;}
       <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDelete()">Excluir</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal-overlay" id="modal-detail" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-card">
+    <button class="detail-close" onclick="closeDetail()" aria-label="Fechar">✕</button>
+    <div class="detail-photo-wrap" id="detail-photo-wrap"></div>
+    <div class="detail-info" id="detail-info"></div>
   </div>
 </div>
 
@@ -1101,7 +1142,7 @@ function renderList() {
     const color = CAT_COLORS[e.cat] || '#4A8FEE';
     const icon  = CAT_ICONS[e.cat]  || '📌';
     const thumb = e.photo ? `<img src="${e.photo}" alt="foto">` : `<span>${icon}</span>`;
-    return `<div class="expense-item">
+    return `<div class="expense-item" onclick="openDetail(${e.id})">
       <div class="expense-thumb">${thumb}</div>
       <div class="expense-info">
         <div class="expense-top">
@@ -1112,7 +1153,7 @@ function renderList() {
         <div class="expense-desc">${e.desc}${e.local ? ' · 📍'+e.local : ''}${e.empresa ? ' · 🏢'+e.empresa : ''}</div>
       </div>
       <div class="expense-val">${formatMoney(e.value)}</div>
-      <button class="expense-del" onclick="askDelete(${e.id})">🗑️</button>
+      <button class="expense-del" onclick="event.stopPropagation();askDelete(${e.id})">🗑️</button>
     </div>`;
   }).join('');
 }
@@ -1143,6 +1184,36 @@ async function confirmDelete() {
     showToast('⚠️ Erro ao excluir', true);
     closeModal();
   }
+}
+
+// ── DETAIL ────────────────────────────────────
+function openDetail(id) {
+  const e = expenses.find(x => x.id === id);
+  if (!e) return;
+  const color = CAT_COLORS[e.cat] || '#4A8FEE';
+  const icon  = CAT_ICONS[e.cat]  || '📌';
+  const wrap = document.getElementById('detail-photo-wrap');
+  wrap.innerHTML = e.photo
+    ? `<img src="${e.photo}" alt="Nota fiscal" onclick="toggleZoom(this)">`
+    : `<div class="detail-photo-empty">🧾 Sem comprovante anexado</div>`;
+  document.getElementById('detail-info').innerHTML = `
+    <div class="detail-row"><span class="detail-label">Nº</span><span class="detail-value">#${String(e.num).padStart(3,'0')}</span></div>
+    <div class="detail-row"><span class="detail-label">Data</span><span class="detail-value">${formatDate(e.date)}</span></div>
+    <div class="detail-row"><span class="detail-label">Valor</span><span class="detail-value">${formatMoney(e.value)}</span></div>
+    <div class="detail-row"><span class="detail-label">Categoria</span><span class="detail-value" style="color:${color}">${icon} ${e.cat}</span></div>
+    ${e.desc ? `<div class="detail-row"><span class="detail-label">Descrição</span><span class="detail-value">${e.desc}</span></div>` : ''}
+    ${e.local ? `<div class="detail-row"><span class="detail-label">Local</span><span class="detail-value">📍 ${e.local}</span></div>` : ''}
+    ${e.empresa ? `<div class="detail-row"><span class="detail-label">Empresa</span><span class="detail-value">🏢 ${e.empresa}</span></div>` : ''}
+  `;
+  document.getElementById('modal-detail').classList.add('open');
+}
+function closeDetail() {
+  document.getElementById('modal-detail').classList.remove('open');
+  const img = document.querySelector('#detail-photo-wrap img');
+  if (img) img.classList.remove('zoomed');
+}
+function toggleZoom(img) {
+  img.classList.toggle('zoomed');
 }
 
 // ── PREVIEW ───────────────────────────────────
