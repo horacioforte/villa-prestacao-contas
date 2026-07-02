@@ -459,6 +459,22 @@ textarea{resize:vertical;min-height:72px;line-height:1.5;}
 .detail-row:last-child{border-bottom:none;}
 .detail-label{color:var(--text3);font-weight:600;flex-shrink:0;}
 .detail-value{color:var(--navy);font-weight:600;text-align:right;}
+.detail-actions{padding:0 20px 18px;display:flex;justify-content:flex-end;}
+
+/* ── PRINT (recibo em tamanho real) ── */
+@media print {
+  body *{visibility:hidden;}
+  #modal-detail.open, #modal-detail.open *{visibility:visible;}
+  #modal-detail.open{position:absolute;inset:0;background:#fff;display:block;padding:0;margin:0;}
+  #modal-detail .detail-card{box-shadow:none;max-width:none;max-height:none;width:100%;border-radius:0;}
+  #modal-detail .detail-close,
+  #modal-detail .detail-actions{display:none !important;}
+  #modal-detail .detail-photo-wrap{background:#fff;max-height:none;overflow:visible;padding:0;}
+  #modal-detail .detail-photo-wrap img{max-width:100%;max-height:none;width:100%;height:auto;
+    transform:none !important;cursor:default;}
+  #modal-detail .detail-info{padding:12px 4px;page-break-inside:avoid;}
+  @page{margin:10mm;}
+}
 
 /* ── CROPPER ── */
 .cropper-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;}
@@ -708,6 +724,9 @@ textarea{resize:vertical;min-height:72px;line-height:1.5;}
     <button class="detail-close" onclick="closeDetail()" aria-label="Fechar">✕</button>
     <div class="detail-photo-wrap" id="detail-photo-wrap"></div>
     <div class="detail-info" id="detail-info"></div>
+    <div class="detail-actions">
+      <button class="btn btn-outline btn-sm" onclick="printReceipt()">🖨️ Imprimir em tamanho real</button>
+    </div>
   </div>
 </div>
 
@@ -1214,6 +1233,12 @@ function closeDetail() {
 }
 function toggleZoom(img) {
   img.classList.toggle('zoomed');
+}
+function printReceipt() {
+  const img = document.querySelector('#detail-photo-wrap img');
+  if (img) img.classList.remove('zoomed');
+  if (!img) { showToast('⚠️ Esta despesa não tem comprovante para imprimir', true); return; }
+  window.print();
 }
 
 // ── PREVIEW ───────────────────────────────────
